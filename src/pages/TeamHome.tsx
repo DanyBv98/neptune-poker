@@ -30,7 +30,7 @@ export function TeamHome() {
   const load = useCallback(async () => {
     const { data } = await supabase
       .from('sessions')
-      .select('*, tickets(id, status, estimates)')
+      .select('*, tickets!tickets_session_id_fkey(id, status, estimates)')
       .eq('team_id', team.id)
       .order('created_at', { ascending: false })
       .limit(60);
