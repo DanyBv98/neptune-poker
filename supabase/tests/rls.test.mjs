@@ -137,6 +137,15 @@ ok((await as('a', false, `select count(*)::int n from members where is_owner`))[
 await as('d', true, `delete from members where id=$1`, [je.member_id]);
 ok((await as('a', false, `select count(*)::int n from members`))[0].n === 4, 'co-host removes member');
 
+// deleting a session takes its tickets, rounds and votes with it
+await as('b', true, `delete from sessions where id=$1`, [sess]);
+ok((await as('a', false, `select count(*)::int n from sessions where id=$1`, [sess]))[0].n === 1, 'member cannot delete session');
+const gone = await as('d', true, `delete from sessions where id=$1 returning id`, [sess]);
+ok(gone.length === 1, 'co-host deletes session');
+const left = await db.query(`select (select count(*) from tickets where session_id=$1)::int + (select count(*) from rounds where session_id=$1)::int
+  + (select count(*) from votes where session_id=$1)::int + (select count(*) from vote_marks where session_id=$1)::int n`, [sess]);
+ok(left.rows[0].n === 0, 'session delete cascades');
+
 const pubs = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime' order by 1`);
 ok(pubs.rows.length === 8, 'realtime publication has 8 tables');
 

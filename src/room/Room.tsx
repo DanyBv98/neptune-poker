@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Shell } from '../components/Shell';
-import { Spinner } from '../components/ui';
+import { Modal, Spinner } from '../components/ui';
 import { cleanTitle, eligibleTracks, trackStats } from '../lib/domain';
-import { flashTitle, setBaseTitle, sfx, usePrefs } from '../lib/util';
+import { inviteLink } from '../lib/supabase';
+import { copyText, flashTitle, setBaseTitle, sfx, usePrefs } from '../lib/util';
 import { useTeam } from '../state/TeamContext';
+import { useToast } from '../state/Toasts';
 import { FunLayer, FunZone, type FeedItem } from './Fun';
 import { SessionSummary } from './History';
 import { FinalEstimate, Results, StartPanel, TicketHeader, VotePanel, VotingControls } from './Panels';
@@ -21,7 +23,14 @@ export function Room() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [celebrate, setCelebrate] = useState(0);
   const [prefs, setPrefs] = usePrefs();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const feedSeq = useRef(0);
+  const toast = useToast();
+  const nav = useNavigate();
+
+  const copyInvite = async () => {
+    if (await copyText(inviteLink(team.invite_code))) toast('Invite link copied. Anyone with it can join the team.', { tone: 'good', icon: '📋' });
+  };
 
   useEffect(() => {
     setRoom(sessionId);
@@ -94,6 +103,24 @@ export function Room() {
   if (!snap) return <Shell><Spinner label="Entering the room" /></Shell>;
 
   const closed = snap.session.status === 'closed';
+  const deleteDialog = confirmDelete && (
+    <DeleteSessionDialog
+      name={snap.session.name}
+      tickets={snap.tickets.length}
+      estimated={snap.tickets.filter((t) => t.status === 'estimated').length}
+      onClose={() => setConfirmDelete(false)}
+      onConfirm={async () => {
+        if (!(await actions.deleteSession())) return;
+        toast('Session deleted', { tone: 'good' });
+        nav(`/t/${team.id}`);
+      }}
+    />
+  );
+  const deleteButton = isFacilitator && (
+    <button className="btn btn-danger btn-small" onClick={() => setConfirmDelete(true)}>
+      Delete session
+    </button>
+  );
   const crumbs = (
     <>
       <Link to={`/t/${team.id}`}>Sessions</Link>
@@ -112,8 +139,10 @@ export function Room() {
               Reopen session
             </button>
           )}
+          {deleteButton}
         </div>
         <SessionSummary snap={snap} />
+        {deleteDialog}
       </Shell>
     );
 
@@ -138,6 +167,9 @@ export function Room() {
             <label className="check" title="Reveal as soon as everyone in the room has voted">
               <input type="checkbox" checked={prefs.autoReveal} onChange={(e) => setPrefs({ autoReveal: e.target.checked })} /> Auto-reveal
             </label>
+            <button className="btn btn-quiet btn-small" onClick={copyInvite} title="Copy the team invite link to share with people who haven’t joined yet">
+              🔗 Copy invite link
+            </button>
             <button
               className="btn btn-quiet btn-small"
               onClick={() => {
@@ -146,6 +178,7 @@ export function Room() {
             >
               Close session
             </button>
+            {deleteButton}
           </div>
         )}
       </div>
@@ -185,7 +218,13 @@ export function Room() {
               </>
             )}
             {members.length === 1 && isFacilitator && (
-              <p className="hint center">You’re alone here. Share the invite link from the team page to bring your crew.</p>
+              <p className="hint center">
+                You’re alone here.{' '}
+                <button className="btn btn-link" onClick={copyInvite}>
+                  Copy the invite link
+                </button>{' '}
+                to bring your crew.
+              </p>
             )}
           </section>
 
@@ -193,6 +232,50 @@ export function Room() {
         </div>
       )}
       <FunLayer pushFeed={pushFeed} celebrate={celebrate} />
+      {deleteDialog}
     </Shell>
+  );
+}
+
+function DeleteSessionDialog({
+  name,
+  tickets,
+  estimated,
+  onClose,
+  onConfirm,
+}: {
+  name: string;
+  tickets: number;
+  estimated: number;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal title="Delete this session?" onClose={onClose}>
+      <div className="form-grid">
+        <p>
+          <strong>{name}</strong> will be deleted for everyone, together with its {tickets} {tickets === 1 ? 'ticket' : 'tickets'}
+          {estimated > 0 && ` (${estimated} estimated)`}, every round and every vote. This can’t be undone.
+        </p>
+        <p className="hint">To keep the estimates in history, close the session instead.</p>
+        <div className="modal-actions">
+          <button className="btn btn-quiet" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-danger"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onConfirm();
+              setBusy(false);
+            }}
+          >
+            {busy ? 'Deleting…' : 'Delete session'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
