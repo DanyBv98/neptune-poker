@@ -260,6 +260,28 @@ alter table public.votes          enable row level security;
 alter table public.vote_marks     enable row level security;
 alter table public.guesses        enable row level security;
 
+-- ---------------------------------------------------------------------
+--  Table privileges
+--  Newer Supabase projects no longer auto-grant table access to the API
+--  roles, so grant exactly what the policies below allow. RLS still
+--  decides which rows; these decide which statements are possible.
+-- ---------------------------------------------------------------------
+revoke all on public.teams, public.members, public.member_tokens, public.sessions,
+  public.tickets, public.rounds, public.votes, public.vote_marks, public.guesses
+  from anon, authenticated;
+
+grant select, update, delete         on public.teams         to authenticated;
+grant select, delete                 on public.members       to authenticated;
+-- Only profile columns are directly editable; ownership/facilitator/binding go via RPCs.
+grant update (display_name, roles, avatar, bubble_best) on public.members to authenticated;
+grant select                         on public.member_tokens to authenticated;
+grant select, insert, update, delete on public.sessions      to authenticated;
+grant select, insert, update, delete on public.tickets       to authenticated;
+grant select                         on public.rounds        to authenticated;
+grant select, insert, update, delete on public.votes         to authenticated;
+grant select                         on public.vote_marks    to authenticated;
+grant select, insert, update, delete on public.guesses       to authenticated;
+
 -- teams
 drop policy if exists teams_select on public.teams;
 create policy teams_select on public.teams for select to authenticated
@@ -283,9 +305,6 @@ drop policy if exists members_delete on public.members;
 create policy members_delete on public.members for delete to authenticated
   using (not is_owner and (user_id = auth.uid() or public.can_facilitate(team_id)));
 
--- Only profile columns are directly editable; ownership/facilitator/binding go via RPCs.
-revoke update on public.members from anon, authenticated;
-grant update (display_name, roles, avatar, bubble_best) on public.members to authenticated;
 
 -- member_tokens: your own, or every token if you run the team
 drop policy if exists member_tokens_select on public.member_tokens;
@@ -533,6 +552,9 @@ begin
   end if;
   return v_next;
 end $$;
+
+-- RPCs and the RLS helper functions they and the policies rely on
+grant execute on all functions in schema public to authenticated;
 
 -- Invite and login-link previews work before the visitor has a session
 grant execute on function public.team_preview(text) to anon, authenticated;

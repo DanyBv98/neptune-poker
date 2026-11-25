@@ -14,8 +14,8 @@ await db.exec(`
     select coalesce(nullif(current_setting('request.jwt.claims', true),''),'{}')::jsonb $$;
   grant usage on schema auth to anon, authenticated;
   grant usage on schema public to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
+  -- Like new Supabase projects: no automatic table/function grants to API roles.
+  alter default privileges in schema public revoke execute on functions from public;
   insert into auth.users values
    ('00000000-0000-0000-0000-00000000000a'),('00000000-0000-0000-0000-00000000000b'),
    ('00000000-0000-0000-0000-00000000000c'),('00000000-0000-0000-0000-00000000000d'),
