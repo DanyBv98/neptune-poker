@@ -445,6 +445,15 @@ textarea {
   border-color: var(--cirrus);
   color: var(--cirrus);
 }
+.btn-danger {
+  background: color-mix(in srgb, var(--bad) 14%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--bad) 55%, transparent);
+  color: var(--bad);
+}
+.btn-danger:not(:disabled):hover {
+  background: var(--bad);
+  color: var(--abyss);
+}
 .btn-link {
   background: none;
   border: none;
@@ -520,6 +529,7 @@ textarea {
 .modal-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.6rem;
 }
 .danger-zone {
   border-top: 1px solid var(--line);
@@ -1068,6 +1078,7 @@ button.kind-chip {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 .pending-note {
   font-size: 0.85rem;

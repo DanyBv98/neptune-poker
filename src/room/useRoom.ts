@@ -59,6 +59,9 @@ export function useRoom(sessionId: string) {
       return; // keep showing the last good state
     }
     if (!s.data) {
+      // Deleted while we were in it (or never existed): drop the stale table.
+      hasSnap.current = false;
+      setSnap(null);
       setError('This session doesn’t exist or was deleted.');
       return;
     }
@@ -335,8 +338,19 @@ export function useRoom(sessionId: string) {
           s === 'closed' ? 'Session closed and saved to history' : 'Session reopened',
         ),
       renameSession: (name: string) => run(supabase.from('sessions').update({ name }).eq('id', sessionId)),
+      /** Deletes the session with all its tickets, rounds and votes. Doesn't reload: the room is gone. */
+      deleteSession: async () => {
+        const { data, error } = await supabase.from('sessions').delete().eq('id', sessionId).select('id');
+        if (error || !data?.length) {
+          // RLS turns a forbidden delete into "0 rows", not an error.
+          toast(error ? errorText(error) : 'Only the manager or a co-host can delete this session.', { tone: 'bad' });
+          return false;
+        }
+        pingSync('sessions');
+        return true;
+      },
     }),
-    [run, tickets, team.id, sessionId, snap, currentRound],
+    [run, tickets, team.id, sessionId, snap, currentRound, toast, pingSync],
   );
 
   return {

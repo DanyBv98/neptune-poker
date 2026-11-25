@@ -20,7 +20,7 @@ Frontend, backend and QA each estimate the part they'll build:
 * **Manager account** (email + password) only for whoever creates the team. Everyone else joins through the **invite link** with a name, avatar and roles; no account.
 * **Personal login link** for every member. It moves their profile to another browser or device. Managers can copy anyone's link from the team page, or replace it.
 * **Co-hosts**: the manager can let others run sessions.
-* **Sessions**: add tickets one by one or paste a list (URLs are picked out as links), reorder, skip, start/re-vote, optional timer, reveal, pick final estimates, *Save and go to next ticket*. Auto-reveal when everyone in the room has voted.
+* **Sessions**: add tickets one by one or paste a list (URLs are picked out as links), reorder, skip, start/re-vote, optional timer, reveal, pick final estimates, *Save and go to next ticket*. Auto-reveal when everyone in the room has voted. Facilitators can copy the invite link right from the session page, and delete a session (with its tickets, rounds and votes) after confirming.
 * **History**: closed sessions keep every round and vote; per-session summary with CSV export.
 * **Votes stay hidden until reveal**, enforced by the database (row-level security), not just the UI.
 * **While you wait**: poke people, throw fish / ice / tridents at them, emoji reactions, bubble-pop mini-game with a team leaderboard, a "guess the average" prediction for people not voting on the current ticket, Neptune facts, confetti on consensus. Sound and effects can be turned off per device.
